@@ -37,6 +37,10 @@ model {
             architecture "amd64"
             operatingSystem "linux"
         }
+        linux_arm {
+            architecture "arm"
+            operatingSystem "linux"
+        }
         windows_x86 {
             architecture "x86"
             operatingSystem "windows"
@@ -53,7 +57,15 @@ model {
 
     toolChains {
         visualCpp(VisualCpp)
-        gcc(Gcc)
+        gcc(Gcc) {
+            target("linux_arm") {
+                cppCompiler.executable = 'arm-linux-gnueabi-g++'
+                cCompiler.executable = 'arm-linux-gnueabi-gcc'
+                assembler.executable = 'arm-linux-gnueabi-as'
+                linker.executable = 'arm-linux-gnueabi-g++'
+                staticLibArchiver.executable = 'arm-linux-gnueabi-ar'
+            }
+        }
         clang(Clang)
     }
 
@@ -67,6 +79,8 @@ model {
                     def arch = targetPlatform.architecture.name.replaceAll("-", "_")
                     if (platformName == "windows_amd64" || platformName == "linux_amd64") {
                         arch = "amd64"
+                    }else if(platformName == "linux_arm") {
+                        arch = "arm"
                     }
                     def libName = os == 'windows' ? "sqlite3.lib" : (os == 'osx' ? "libsqlite3.dylib" : "libsqlite3.so")
                     def libPath;
@@ -133,9 +147,10 @@ model {
         cbljavasqlitecustom(NativeLibrarySpec) {
             targetPlatform "osx_x86"
             targetPlatform "osx_x86_64"
-            targetPlatform "linux_x86"
-            targetPlatform "linux_x86_64"
-            targetPlatform "linux_amd64"
+            //targetPlatform "linux_x86"
+            //targetPlatform "linux_x86_64"
+            //targetPlatform "linux_amd64"
+            targetPlatform "linux_arm"
             targetPlatform "windows_x86"
             targetPlatform "windows_x86_64"
             targetPlatform "windows_amd64"
@@ -149,16 +164,20 @@ model {
                         srcDir "../jni/headers"
                     }
                     lib library: 'libsqlite3', linkage: 'shared'
-                    lib library: 'libicui18n', linkage: 'static'
-                    lib library: 'libicuuc',   linkage: 'static'
-                    lib library: 'libicudata', linkage: 'static'
+                    //lib library: 'libicui18n', linkage: 'static'
+                    //lib library: 'libicuuc',   linkage: 'static'
+                    //lib library: 'libicudata', linkage: 'static'
                 }
             }
             binaries.withType(StaticLibraryBinary) { binary ->
                 buildable = false
             }
             binaries.all {
-                cppCompiler.args '-DUSE_ICU4C_UNICODE_COMPARE -DU_STATIC_IMPLEMENTATION'
+		if (targetPlatform.name == "linux_arm") { 
+                    cppCompiler.args '-DU_STATIC_IMPLEMENTATION'
+                }else {
+                    cppCompiler.args '-DUSE_ICU4C_UNICODE_COMPARE -DU_STATIC_IMPLEMENTATION'
+                }
                 if (targetPlatform.operatingSystem.macOsX) {
                     cppCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
                     cppCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include/darwin"
@@ -201,6 +220,8 @@ binaries.withType(SharedLibraryBinary) { binary ->
     def arch = targetPlatform.architecture.name.replaceAll("-", "_")
     if (platformName == "windows_amd64" || platformName == "linux_amd64") {
         arch = "amd64"
+    }else if(platformName == "linux_arm") {
+        arch = "arm"
     }
 
     // Postprocessor task for OSX:
@@ -215,8 +236,15 @@ binaries.withType(SharedLibraryBinary) { binary ->
     }
 
     // Jar output shared binary:
-    jar.into("native/${os}/${arch}") {
-        from builderTask.outputFile
+    if(platformName == "linux_arm") {
+	//use the custom cbl sqlite library that is compiled for target linux arm 
+        jar.into("native/${os}/${arch}") {
+            from "../vendor/customcblsqlite/libcbljavasqlitecustom.so"
+        }
+    } else {
+        jar.into("native/${os}/${arch}") {
+            from builderTask.outputFile
+        }
     }
 
     // Jar sqlite3 library:
@@ -297,13 +325,27 @@ uploadArchives {
             pom.groupId = 'com.couchbase.lite'
             pom.artifactId = 'couchbase-lite-java-sqlite-custom'
             pom.project {
+                name 'com.couchbase.lite:couchbase-lite-java-sqlite-custom'
+                description 'This is a shared native SQLite library used for Couchbase Lite Java.'
+                url 'http://developer.couchbase.com/mobile/'
                 licenses {
                     license {
-                        name 'Couchbase Community Edition License Agreement'
-                        url 'http://www.couchbase.com/agreement/community'
+                        name 'Couchbase, Inc. Community Edition License Agreement'
+                        url 'https://www.couchbase.com/binaries/content/assets/website/legal/ce-license-agreement.pdf'
                         distribution 'repo'
                     }
                 }
+                scm {
+                    url 'http://developer.couchbase.com/mobile/'
+                }
+                developers {
+                    developer {
+                        name 'Couchbase Mobile'
+                        email 'mobile@couchbase.com'
+                        organization 'Couchbase'
+                        organizationUrl 'http://www.couchbase.com'
+                    }
+               }
             }
         }
     }
