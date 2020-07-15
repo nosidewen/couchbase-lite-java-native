@@ -1,6 +1,7 @@
 apply plugin: 'cpp'
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin:  'maven-publish'
 
 version = System.getenv("MAVEN_UPLOAD_VERSION")
 
@@ -293,6 +294,39 @@ artifacts {
     archives sourcesJar
 }
 */
+////////////////////////////////////////////
+// For Github Packages
+////////////////////////////////////////////
+
+//To publish a custom sqlite package to Github packages
+// 1. Update the artifact name to include name of processor/architecture in line 322
+// 2. Update the desired version number in line 323
+// 3. Uncomment the finalizedBy() line at line 329
+// 4. From the couchbase-lite-java repo, run the gradle clean and test command as normal
+// 5. Then from the same directory, run `./gradlew build` - this will publish the package to GH
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/nosidewen/couchbase-lite-java-native")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            groupId = "com.getorro.couchbase"
+            artifactId = "couchbase-lite-java-sqlite-custom-xxx"
+            version = "x.x.x"
+            from(components.java)
+        }
+    }
+}
+
+//build.finalizedBy(publish)
 
 ////////////////////////////////////////////
 // For Maven

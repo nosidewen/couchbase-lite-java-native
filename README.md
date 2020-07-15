@@ -17,6 +17,21 @@ This is a commonly used library in the community, so its recipe was already incl
 ### libcbljavasqlitecustom
 Based on the gradle build scripts, the source code for this library is in `couchbase-lite-java-native/jni/`. In order to build this library with yocto for our target machine, all of this source code (and headers) were copied to a new bitbake recipe. Fore reference, the recipe file can be found at `couchbase-lite-java-native/vendor/customcblsqlite/cblcustom_1.0.0.bb` and the makefile is at `couchbase-lite-java-native/vendor/customcblsqlite/Makefile'.
 
+## Publishing Java Package
+In the `sqlite-custom` directory, the `couchbase-lite-java-sqlite-custom.jar` is the output of the couchbase-lite-java build process. When adding support for different architectures, it is useful to publish a new package so it can be easily used by others. Github Packages is used to host the maven repository. The steps to publish a new package are as follows:
+```
+Set System Environment variables
+ 1. GITHUB_ACTOR - github username
+ 2. GITHUB_TOKEN - github personal access token with permission to write package
+ 
+Edit sqlite-custom/build-java.gradle in the following way:
+ 1. Update the artifact name to include name of processor/architecture in line 322
+ 2. Update the desired version number in line 323
+ 3. Uncomment the finalizedBy() line at line 329
+ 4. From the couchbase-lite-java repo, follow the build steps to run the gradle clean and test tasks 
+ 5. Then from the same directory, run `./gradlew build`
+```
+
 ## SQLCipher
 The current project does not require use of sqlcipher, so all references and artifacts related to this are deleted or ignored. In the future, if this becomes a requirement, a similar process will be required to build OpenSSL and the custom cbl sqlcipher library.
 
