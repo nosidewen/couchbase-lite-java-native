@@ -1,53 +1,22 @@
 # couchbase-lite-java-native #
 
-This is a shared native SQLite library used for Couchbase Lite [Android](https://github.com/couchbase/couchbase-lite-android)/[Java](https://github.com/couchbase/couchbase-lite-java). 
 
-There are three SQLite configurations.
+This is a forked version of [couchbase-lite-java-native](https://github.com/couchbase/couchbase-lite-java-native) with modifications made off of the `release/1.4.1` branch in order to add Linux ARM native binaries to the native JAR. For this project, this build includes ARM binaries sepcifically for the Cortex-A7.
 
-1. sqlite-system - No sqlite library provided, use system sqlite installed on the device or machine
-2. sqlite        - bundled with a prebuilt sqlite library
-3. sqlcipher     - bundled with a prebuilt sqlcipher library for encryption
+The original library provided all of the scripts and source code necessary to build the shared libraries for Windows, MacOS and Linux x86, x86_64 and amd64, and all of these libraries are packaged into a jar. The changes made to this repository are such that it comments out the building and packaging of these libraries and instead packages pre-built libraries for Linux ARM, Cortex A7, iMX6ULL processor. Specifically there are two native libraries that need to be prebuilt: 
+* `vendor/sqlite/libs/linux/arm/libsqlite3.so`
+* `vendor/customcblsqlite/libcbljavasqlitecustom.so`
+To build this java library to work with other ARM processors, build the above shared libraries for your target machine, then follow the build steps for [couchbase-lite-java](https://github.com/nosidewen/couchbase-lite-java)
 
-## Get the code
+## Building Native Binaries
+For this development, yocto was used to build the required libraries for the target machine. Notes for configuring yocto to build these libraries are included below.
 
-```
-$ git clone https://github.com/couchbase/couchbase-lite-java-native.git
-```
+### libsqlite3
+This is a commonly used library in the community, so its recipe was already included in yocto/bitbake. Only needed to run `bitbake sqlite3` to build the library and then copied this output into the `couchbase-lite-java-native` repo. This library is also a dependency of the library below.
 
-## Support Platform
-* Android
-* Linux (x86, x86_64, amd64)
-* Windows (x86, x86_64)
-* OSX (x86, x86_64)
+### libcbljavasqlitecustom
+Based on the gradle build scripts, the source code for this library is in `couchbase-lite-java-native/jni/`. In order to build this library with yocto for our target machine, all of this source code (and headers) were copied to a new bitbake recipe. Fore reference, the recipe file can be found at `couchbase-lite-java-native/vendor/customcblsqlite/cblcustom_1.0.0.bb` and the makefile is at `couchbase-lite-java-native/vendor/customcblsqlite/Makefile'.
 
-## How to build
+## SQLCipher
+The current project does not require use of sqlcipher, so all references and artifacts related to this are deleted or ignored. In the future, if this becomes a requirement, a similar process will be required to build OpenSSL and the custom cbl sqlcipher library.
 
-The project is using [Gradle](http://www.gradle.org) to build and package the native binaries into a jar file (See Gradle [Building native binaries](http://www.gradle.org/docs/current/userguide/nativeBinaries.html) for more info). The packaged jar file will be located in build/libs folder.
-
-```
-$ cd <sqlite-system|sqlite|sqlcipher>
-$ gradlew -Pspec=<android|java> clean
-$ gradlew -Pspec=<android|java> build
-```
-### Android
-* [Android NDK](http://developer.android.com/ndk/index.html)
-
- Make sure that you have the `ANDROID_NDK_HOME` variable defined. For example,
- ```
- #.bashrc:
- export ANDROID_NDK_HOME=~/Android/android-ndk-r11c
-```
-
-### Linux 
-* To build the x86 binary on a 64-bit machine, you will need to setup a 64-bit toolchain as follows.
-
-```
-$ sudo apt-get install gcc-multilib
-$ sudo apt-get install g++-multilib
-```
-
-### Windows
-* Visual Studio 2015 is required. 
-
-### OSX
-* Command Line Tools for Xcode is required. You may download the Command Line Tools from the [Apple Developer](https://developer.apple.com/xcode/downloads) website.
